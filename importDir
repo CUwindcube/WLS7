@@ -1,0 +1,40 @@
+function [alt,data,textData] = importDir(direc,flag)
+%
+% function [alt,data,textData] = importDir(direc,flag)
+% =========================================================================
+% importDir imports Windcube data from all files in the specified directory.
+% An error is thrown if a file contains altitudes that do not match those
+% of the initial file. All files in the directory must be of the same type.
+% =========================================================================
+% INPUT       DESCRIPTION                  TYPE                   UNITS
+% -------------------------------------------------------------------------
+% direc       directory name               string
+% flag        's' for sta files            string
+%             'r' for rtd files
+% =========================================================================
+% OUTPUT      DESCRIPTION                  TYPE                   UNITS
+% -------------------------------------------------------------------------
+% alt         altitudes                    [1xN]                  m
+% data        lidar data (see Windcube     [Mx19N+1]    for 's'
+%             user manual for more info)   [Mx8N]       for 'r'
+% textData    header and timestamps        [M+57x19N+2] for 's'
+%                                          [M+57x8N+4]  for 'r'
+% =========================================================================
+
+% store all file names from directory
+fNames = dir(direc);
+fNames = fNames(~[fNames.isdir]);
+fNames = {fNames.name}.';
+
+% store data from first file
+eval(['[alt,data,textData] = importFile(''' direc '\' fNames{1} ''',''' flag ''');']);
+
+% add data from the rest of the files
+for k = 2:numel(fNames)
+    eval(['[newAlt,newData,newText] = importFile(''' direc '\' fNames{k} ''',''' flag ''');']);
+%     if any(newAlt ~= alt)
+%         error(['Altitudes in ' fNames{k} ' do not match initial altitudes']);
+%     end
+    data = vertcat(data,newData);
+    textData = vertcat(textData,newText(58:end,:));
+end
