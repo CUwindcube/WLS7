@@ -1,0 +1,159 @@
+function load(inDir,f1,f2)
+% load('C:\Users\Michael\Desktop\LUMEX\',1,'s')
+
+% function load(inDir,f1,f2,startT,endT,outDir)
+% =========================================================================
+% load reads in Windcube data using the importDir.m program and
+% saves the data according to the file name at the end of the code.  
+% The data is saved as .mat.
+% =========================================================================
+% INPUT      DESCRIPTION                  TYPE      UNITS
+% -------------------------------------------------------------------------
+% inDir     input file or directory name    string
+% f1        0 = load single file            int
+%           1 = load entire directory
+% f2        's' for sta file(s)             string
+%           'r' for rtd file(s)
+% =========================================================================
+path(path,'G:/Work/Wind Research/Matlab/Common')
+
+%% Load data
+for wcn = 2:3
+    switch wcn
+        case 1
+            WCnum = 49; %CU windcube
+        case 2
+            WCnum = 61; %NCAR windcube
+        case 3
+            WCnum = 68; %CU windcube
+    end
+    pth = strcat((inDir),'WC',num2str(WCnum));
+    switch f1
+        case 0
+            [tmpalt,data,textData] = importFile(pth,f2);
+        case 1
+            [tmpalt,data,textData] = importDir(pth,f2);
+    end
+    s1 = strcat('alt',num2str(WCnum)); % Measurement height [m]
+    eval([s1 ' = single(tmpalt);']);
+    
+    % store timestamps
+    dates = textData(58:end,1);
+    dn = datenum(dates,'dd/mm/yyyy HH:MM:SS');
+    date = datevec(dn);
+    
+    
+    switch f2
+        case 's'
+            
+            date(:,6)=0;
+            s1 = strcat('Date',num2str(WCnum)); % Timestamp [YYYY MM DD HH MM SS
+            eval([s1 ' = date;'])
+            
+        case 'r'
+            s1 = strcat('rawDate',num2str(WCnum)); % Scanner head direction
+            eval([s1 ' = single(date);'])
+    end
+    
+    switch f2
+        case 's'
+            % Load the variable names
+            vars = genvarname(textData(57,2:end));
+            for k = 1:length(vars)
+                eval([vars{k} ' = data(1:end,k);']);
+            end
+            
+            % Concatinate variables from each height
+            s1 = strcat('Vh',num2str(WCnum)); % Horizontal Wind Speed [m/s]
+            eval([s1 ' = single([Vhm1 Vhm2 Vhm3 Vhm4 Vhm5 Vhm6 Vhm7 Vhm8 Vhm9 Vhm10]);']);
+            s1 = strcat('dVh',num2str(WCnum)); % Horizontal Wind Speed Variance [m^2/s^2]
+            eval([s1 ' = single([dVh1 dVh2 dVh3 dVh4 dVh5 dVh6 dVh7 dVh8 dVh9 dVh10]);']);
+            s1 = strcat('Vhmax',num2str(WCnum)); % Maximum Horizontal Wind Speed [m/s]
+            eval([s1 ' = single([VhMax1 VhMax2 VhMax3 VhMax4 VhMax5 VhMax6 VhMax7 VhMax8 VhMax9 VhMax10]);']);
+            s1 = strcat('Vhmin',num2str(WCnum)); % Minimum Horizontal Wind Speed [m/s]
+            eval([s1 ' = single([VhMin1 VhMin2 VhMin3 VhMin4 VhMin5 VhMin6 VhMin7 VhMin8 VhMin9 VhMin10]);']);
+            s1 = strcat('Azim',num2str(WCnum)); % Mean horizontal wind direction [deg. from north]
+            eval([s1 ' = single([Azim1 Azim2 Azim3 Azim4 Azim5 Azim6 Azim7 Azim8 Azim9 Azim10]);']); %Correct the windcube coordinate system to standard MET definition (Stull & WC users manual p. 33)
+            s1 = strcat('u',num2str(WCnum)); % Mean U component [m/s] (Positive to the east)
+            eval([s1 ' = single([-vm1 -vm2 -vm3 -vm4 -vm5 -vm6 -vm7 -vm8 -vm9 -vm10]);']); %Correct the windcube coordinate system to standard MET definition (Stull & WC users manual p. 33)
+            s1 = strcat('v',num2str(WCnum)); % Mean V component [m/s] (Positive to the north)
+            eval([s1 ' = single([-um1 -um2 -um3 -um4 -um5 -um6 -um7 -um8 -um9 -um10]);']); %Correct the windcube coordinate system to standard MET definition (Stull & WC users manual p. 33)
+            s1 = strcat('w',num2str(WCnum)); % Mean W component [m/s] (Positive away from ground)
+            eval([s1 ' = single([-wm1 -wm2 -wm3 -wm4 -wm5 -wm6 -wm7 -wm8 -wm9 -wm10]);']); %Correct the windcube coordinate system to standard MET definition (Stull & WC users manual p. 33)
+            s1 = strcat('du',num2str(WCnum)); % U component variance [m^2/s^2]
+            eval([s1 ' = single([dv1 dv2 dv3 dv4 dv5 dv6 dv7 dv8 dv9 dv10]);']); %Correct the windcube coordinate system to standard MET definition (Stull & WC users manual p. 33)
+            s1 = strcat('dv',num2str(WCnum)); % V component variance [m^2/s^2]
+            eval([s1 ' = single([du1 du2 du3 du4 du5 du6 du7 du8 du9 du10]);']); %Correct the windcube coordinate system to standard MET definition (Stull & WC users manual p. 33)
+            s1 = strcat('dw',num2str(WCnum)); % W component variance [m^2/s^2]
+            eval([s1 ' = single([dw1 dw2 dw3 dw4 dw5 dw6 dw7 dw8 dw9 dw10]);']); %Correct the windcube coordinate system to standard MET definition (Stull & WC users manual p. 33)
+            
+            % Concatinate statistics from each height
+            s1 = strcat('CNR',num2str(WCnum)); % Mean CNR [dB]
+            eval([s1 ' = single([CNRm CNRm1 CNRm2 CNRm3 CNRm4 CNRm5 CNRm6 CNRm7 CNRm8 CNRm9]);']);
+            s1 = strcat('dCNR',num2str(WCnum)); % CNR variance [dB^2]
+            eval([s1 ' = single([dCNR dCNR1 dCNR2 dCNR3 dCNR4 dCNR5 dCNR6 dCNR7 dCNR8 dCNR9]);']);
+            s1 = strcat('CNRmax',num2str(WCnum)); % Max CNR [dB]
+            eval([s1 ' = single([CNRmax CNRmax1 CNRmax2 CNRmax3 CNRmax4 CNRmax5 CNRmax6 CNRmax7 CNRmax8 CNRmax9]);']);
+            s1 = strcat('CNRmin',num2str(WCnum)); % Min CNR [dB]
+            eval([s1 ' = single([CNRmin CNRmin1 CNRmin2 CNRmin3 CNRmin4 CNRmin5 CNRmin6 CNRmin7 CNRmin8 CNRmin9]);']);
+            %             s1 = strcat('spect_broad',num2str(WCnum)); % Mean spectral broadening [m/s]
+            %             eval([s1 ' = single([spectral_broadening spectral_broadening1 spectral_broadening2 spectral_broadening3 spectral_broadening4 spectral_broadening5 spectral_broadening6 spectral_broadening7 spectral_broadening8 spectral_broadening9]);']);
+            %             s1 = strcat('dspect_broad',num2str(WCnum)); % Spectral broadening variance [m^2/s^2]
+            %             eval([s1 ' = single([dspectral_broadening dspectral_broadening1 dspectral_broadening2 dspectral_broadening3 dspectral_broadening4 dspectral_broadening5 dspectral_broadening6 dspectral_broadening7 dspectral_broadening8 dspectral_broadening9]);']);
+            s1 = strcat('Avail',num2str(WCnum)); % Percent of available returns for time averaged data
+            eval([s1 ' = single([Avail0x2E1 Avail0x2E2 Avail0x2E3 Avail0x2E4 Avail0x2E5 Avail0x2E6 Avail0x2E7 Avail0x2E8 Avail0x2E9 Avail0x2E10]);']);
+            
+            s1 = strcat('Wiper',num2str(WCnum)); % Horizontal Wind Speed [m/s]
+            eval([s1 ' = single([WiperCount]);']);
+            
+            s1 = strcat('Vh',num2str(WCnum)); % Horizontal Wind Speed [m/s]
+            s2 = strcat('Azim',num2str(WCnum)); % Mean horizontal wind direction [deg. from north]
+            eval([s2 '(isnan(' s1 '))=NaN;'])
+            
+        case 'r'
+            % Load the variable names
+            vars = genvarname(textData(57,5:end));
+            for k = 1:length(vars)
+                eval([vars{k} ' = data(1:end,k);']);
+            end
+            
+            Position = textData(58:end,2);
+            Position = str2double(Position);
+            Position = int16(Position);
+            s1 = strcat('Position',num2str(WCnum)); % Scanner head direction
+            eval([s1 ' = Position;'])
+            
+            Tm = textData(58:end,3);
+            Tm = str2double(Tm);
+            Tm = single(Tm);
+            s1 = strcat('rawTm',num2str(WCnum)); % Internal Windcube Temperature [C]
+            eval([s1 ' = Tm;'])
+            
+            s1 = strcat('Wiper',num2str(WCnum)); % Wiper Status
+            eval([s1 '= textData(58:end,4);'])
+            
+            % Concatinate variables from each height
+            s1 = strcat('RWS',num2str(WCnum)); % Radial Wind Speed [m/s]
+            eval([s1 ' = single([RWS0x2D1 RWS0x2D2 RWS0x2D3 RWS0x2D4 RWS0x2D5 RWS0x2D6 RWS0x2D7 RWS0x2D8 RWS0x2D9 RWS0x2D10]);']);
+            s1 = strcat('RWSD',num2str(WCnum)); % Average Doppler Spectrum [m/s]
+            eval([s1 ' = single([RWSD0x2D1 RWSD0x2D2 RWSD0x2D3 RWSD0x2D4 RWSD0x2D5 RWSD0x2D6 RWSD0x2D7 RWSD0x2D8 RWSD0x2D9 RWSD0x2D10]);']);
+            s1 = strcat('rawVh',num2str(WCnum)); % Raw Horizontal Wind Speed [m/s]
+            eval([s1 ' = single([Vh0x2D1 Vh0x2D2 Vh0x2D3 Vh0x2D4 Vh0x2D5 Vh0x2D6 Vh0x2D7 Vh0x2D8 Vh0x2D9 Vh0x2D10]);']);
+            s1 = strcat('rawAzim',num2str(WCnum)); % Raw Wind Direction [deg.]
+            eval([s1 ' = single([Azi0x280xB00x290x2D1 Azi0x280xB00x290x2D2 Azi0x280xB00x290x2D3 Azi0x280xB00x290x2D4 Azi0x280xB00x290x2D5 Azi0x280xB00x290x2D6 Azi0x280xB00x290x2D7 Azi0x280xB00x290x2D8 Azi0x280xB00x290x2D9 Azi0x280xB00x290x2D10]);']);
+            s1 = strcat('rawU',num2str(WCnum)); % Mean U component [m/s]
+            eval([s1 ' = single([-v0x2D1 -v0x2D2 -v0x2D3 -v0x2D4 -v0x2D5 -v0x2D6 -v0x2D7 -v0x2D8 -v0x2D9 -v0x2D10]);']); %Correct the windcube coordinate system to standard MET definition (Stull & WC users manual p. 33)
+            s1 = strcat('rawV',num2str(WCnum)); % Mean V component [m/s]
+            eval([s1 ' = single([-u0x2D1 -u0x2D2 -u0x2D3 -u0x2D4 -u0x2D5 -u0x2D6 -u0x2D7 -u0x2D8 -u0x2D9 -u0x2D10]);']); %Correct the windcube coordinate system to standard MET definition (Stull & WC users manual p. 33)
+            s1 = strcat('rawW',num2str(WCnum)); % Mean W component [m/s]
+            eval([s1 ' = single([-w0x2D1 -w0x2D2 -w0x2D3 -w0x2D4 -w0x2D5 -w0x2D6 -w0x2D7 -w0x2D8 -w0x2D9 -w0x2D10]);']); %Correct the windcube coordinate system to standard MET definition (Stull & WC users manual p. 33)
+            
+            % Concatinate statistics from each height
+            s1 = strcat('rawCNR',num2str(WCnum)); % Mean CNR [dB]
+            eval([s1 ' = single([CNR0x2D1 CNR0x2D2 CNR0x2D3 CNR0x2D4 CNR0x2D5 CNR0x2D6 CNR0x2D7 CNR0x2D8 CNR0x2D9 CNR0x2D10]);']);
+    end
+end
+
+clearvars -except *49 *61 *68 alt*
+% save(strcat(outDir,'\',outfile,'.mat'))
+save('LUMEX.mat')
