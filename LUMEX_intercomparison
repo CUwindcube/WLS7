@@ -1,0 +1,182 @@
+function intercomp(pth,outdir,f1,f2)
+% intercomp('C:\Users\Michael\Desktop\','G:\Work\Wind Research\LUMEX\Intercomparison\',1,'s')
+
+path(path,'G:\Work\Wind Research\Matlab\Common')
+% function intercomp(pth,f1,f2)
+% =========================================================================
+% intercomp plots Windcube data vs. time.
+% =========================================================================
+% INPUT      DESCRIPTION                  TYPE      UNITS
+% -------------------------------------------------------------------------
+% pth       file or directory name       int
+% f1         0 = plot single file
+%            1 = plot entire directory
+% f2         's' for sta file(s)          string
+%            'r' for rtd file(s)
+% =========================================================================
+% load data
+for wcn = 2:3
+    
+    switch wcn
+        case 1
+            WCnum =49;
+        case 2
+            WCnum =61;
+        case 3
+            WCnum =68;
+    end
+    
+    Path = strcat(pth,'WC',num2str(WCnum));
+    
+    switch f1
+        case 0
+            [alt,data,textData] = importFile(Path,f2);
+        case 1
+            [alt,data,textData] = importDir(Path,f2);
+    end
+    
+    % store timestamps
+    dates = textData(58:end,1);
+    wc_date = datevec(dates,'dd/mm/yyyy HH:MM:SS');
+    wc_date(:,6) = 0;
+    wc_date = datenum(wc_date);
+
+    %%     ************************************************************************************
+    
+    s = strcat('dn', num2str(WCnum));
+    eval([s '=wc_date;'])
+        
+    vars = genvarname(textData(57,2:end));
+    for k = 1:length(vars)
+        eval([vars{k} ' = data(1:end,k);']);
+    end
+    
+    % Condense the variables from each height
+    s = strcat('Vh',num2str(WCnum));
+    eval([s ' = [Vhm1 Vhm2 Vhm3 Vhm4 Vhm5 Vhm6 Vhm7 Vhm8 Vhm9 Vhm10];']);
+    s = strcat('Azim',num2str(WCnum));
+    eval([s ' = [Azim1 Azim2 Azim3 Azim4 Azim5 Azim6 Azim7 Azim8 Azim9 Azim10];']);
+    s = strcat('CNR',num2str(WCnum));
+    eval([s ' = [CNRm CNRm1 CNRm2 CNRm3 CNRm4 CNRm5 CNRm6 CNRm7 CNRm8 CNRm9];']);
+    s = strcat('Avail',num2str(WCnum));
+    eval([s ' = [Avail0x2E1 Avail0x2E2 Avail0x2E3 Avail0x2E4 Avail0x2E5 Avail0x2E6 Avail0x2E7 Avail0x2E8 Avail0x2E9 Avail0x2E10];']);
+end
+
+
+clearvars -except *61 *68 alt outdir
+CNRthresh = -17;
+Vh61(CNR61 < CNRthresh)= NaN;
+Vh68(CNR68 < CNRthresh)= NaN;
+Azim61(isnan(Vh61))= NaN;
+Azim68(isnan(Vh68))= NaN;
+
+[~,index61,index68] = get_common_times(dn61,dn68,.00012);
+index61(index61==0) = NaN;
+index68(index68==0) = NaN;
+
+%% Account for the difference in 0 & 360 degress in the plot
+% Azimdiff=abs(Azim61(index61,:)-Azim68(index68,:));
+% find(Azim68(index68,1)>100 & Azim61(index61,1)>300)
+% 
+% wd68=find(Azim68<100);
+% Azim68(wd68) = Azim68(wd68)+360;
+% wd61=find(Azim61<100);
+% Azim61(wd61) = Azim61(wd61)+360;
+
+%% plot
+fss = 'FontSize';
+fs =30;
+formatSpec = '%0.3f';
+
+for hn = 1:10
+    
+    data61 = Vh61(index61,hn);
+    data68 = Vh68(index68,hn);
+    good = isnan(data61) + isnan(data68);
+        
+    wsfit(1,:) = polyfit(data61(good==0),data68(good==0),1);
+    wsr(1) = corr(data61(good==0),data68(good==0));
+    
+            
+    figure
+    maximize(gcf);
+    %     subplot(2,1,1);
+    plot(data61,data68,'r.','MarkerSize',30)
+    hold on
+    h1=plot([0:360],[0:360],'k','LineWidth',1);
+    xlim([floor(min(min(data61,data68))) ceil(max(max(data61,data68)))])
+    ylim([floor(min(min(data61,data68))) ceil(max(max(data61,data68)))])
+    set(gca,fss,fs)
+    title(strcat({'Wind Speed Intercomparison at '}, num2str(alt(hn)),' m'))
+    xlabel('WC61 [m/s]')
+    ylabel('WC68 [m/s]')
+    set(gca,'XTick',[0:2:ceil(max(max(data61,data68)))],'YTick',[0:2:ceil(max(max(data61,data68)))])
+    %     grid on
+    text(.65,.2,[strcat({'m = '},num2str(wsfit(1,1),formatSpec));...
+        strcat({'b = '},num2str(wsfit(1,2),formatSpec));...
+        strcat({'R^2 = '},num2str(wsr^2,formatSpec))],...
+        'Units','normalized',fss,fs-5,'BackgroundColor','none')
+    h=legend([h1], '1:1 Line', 'Location','North');
+    l=findobj(h,'type','text');
+    set(l,fss,fs-7)
+    daspect([1 1 0.1])
+    export_fig(strcat(outdir,num2str(alt(hn)),'m_2min_WS_'),'-tif','-transparent')
+    clear data*
+    
+        
+    data61 = Azim61(index61,hn);
+    data68 = Azim68(index68,hn);
+    good = isnan(data61) + isnan(data68);
+        
+    wdfit(1,:) = polyfit(data61(good==0),data68(good==0),1);
+    wdr(1) = corr(data61(good==0),data68(good==0));
+                
+    figure
+    maximize(gcf);
+    %     subplot(2,1,1);
+    plot(data61,data68,'r.','MarkerSize',30)
+    hold on
+    h1=plot([0:1e4],[0:1e4],'k','LineWidth',1);
+    xlim([0 360])
+    ylim([0 360])
+    set(gca,fss,fs)
+    title(strcat({'Wind Direction Intercomparison at '}, num2str(alt(hn)),' m'))
+    xlabel('WC61 [deg.]')
+    ylabel('WC68 [deg.]')
+    set(gca,'XTick',[0:45:360],'YTick',[0:45:360])
+    %     grid on
+    text(.65,.2,[strcat({'m = '},num2str(wdfit(1,1),formatSpec));...
+        strcat({'b = '},num2str(wdfit(1,2),formatSpec));...
+        strcat({'R^2 = '},num2str(wdr^2,formatSpec))],...
+        'Units','normalized',fss,fs-5,'BackgroundColor','none')
+    h=legend([h1], '1:1 Line', 'Location','North');
+    l=findobj(h,'type','text');
+    set(l,fss,fs-7)
+    daspect([1 1 0.1])
+    export_fig(strcat(outdir,num2str(alt(hn)),'m_2min_WD_'),'-tif','-transparent')
+    clear data*
+    
+    
+    WSr2(hn,:) = wsr.^2;
+    WDr2(hn,:) = wdr.^2;
+    WDm(hn,:) = wdfit(:,1)';
+    WDint(hn,:) = wdfit(:,2)';
+end
+close all
+
+figure
+maximize(gcf);
+hold on
+plot(WSr2(:,1),alt,'-rd','MarkerEdgeColor','k','MarkerFaceColor','r')
+plot(WDr2(:,1),alt,'-rs','MarkerEdgeColor','k','MarkerFaceColor','r')
+% xlim([0.94 1])
+ylim([40 220.1])
+set(gca,fss,fs)
+title('Height vs.R^2 Values')
+ylabel('Height (m)')
+xlabel('R^2')
+legend('WC61 Wind Speed R^2', 'WC68 Wind Speed R^2', 'WC61 Wind Direction R^2', 'WC68 Wind Direction R^2','Location', 'Best')
+saveas(gcf,strcat(outdir,'ZvsR2_CWEX13_2min.png'))
+
+close all
+end
