@@ -1,0 +1,497 @@
+function LUMEX_daily_pcolor(avgprd,fontsize)
+% LUMEX_daily_pcolor(2,13)
+
+% function LUMEX_daily_patch(avgprd,fontsize)
+% =========================================================================
+% LUMEX_daily creates time-height countour plots of variables upwind,
+% downwind, and differences for specific time periods.
+% =========================================================================
+% INPUT      DESCRIPTION                  TYPE      UNITS
+% -------------------------------------------------------------------------
+% avgprd        averaging period in minutes
+% fontsize      size of font for plots
+% =========================================================================
+
+path(path,'G:/Work/Wind Research/Matlab/Common') % Add other matlab scripts to aid in plotting routine
+outpath = 'G:\Work\Wind Research\LUMEX\output\';
+
+% load data
+load(strcat('LUMEX_',num2str(avgprd),'avg.mat'))
+
+alpha61(find(alpha61==Inf | alpha61==-Inf))= NaN;
+alpha68(find(alpha68==Inf | alpha68==-Inf))= NaN;
+
+% Find when WCs are operational
+time_start = datenum('23/06/2014 00:00:00', 'dd/mm/yyyy HH:MM:SS');
+time_end = datenum('26/08/2014 00:00:02', 'dd/mm/yyyy HH:MM:SS');
+masterTime = (time_start:2/(60*24):time_end)';
+masterTime(:,2:3) = nan(length(masterTime),2);
+for wc = 1:2
+    switch wc
+        case 1
+            dn = dn61;
+        case 2
+            dn = dn68;
+    end
+    for i = 1:length(masterTime)
+        ans=find(abs(masterTime(i,1)-dn)<.0001);
+        if ans >=1
+            masterTime(i,wc+1) = 1;
+        end
+    end
+end
+
+
+% Create full length variables for WC61
+masterVh61 = nan(length(masterTime),11);
+masterAzim61 = nan(length(masterTime),11);
+masterAlpha61 = nan(length(masterTime),10);
+masterTKE61 = nan(length(masterTime),11);
+masterI61 = nan(length(masterTime),11);
+masterAvail61 = nan(length(masterTime),11);
+
+c=0;
+for i = 1:length(masterTime)
+    if masterTime(i,2) == 1
+        c = c+1;
+        masterVh61(i,1:10) = Vh61(c,:);
+        masterAzim61(i,1:10) = Azim61(c,:);
+        masterAlpha61(i,1:9) = alpha61(c,:);
+        masterTKE61(i,1:10) = TKE2_61(c,:);
+        masterI61(i,1:10) = I2_61(c,:);
+        masterAvail61(i,1:10) = Avail61(c,:);
+    end
+end
+
+% Create full length variables for WC68
+masterVh68 = nan(length(masterTime),11);
+masterAzim68 = nan(length(masterTime),11);
+masterAlpha68 = nan(length(masterTime),10);
+masterTKE68 = nan(length(masterTime),11);
+masterI68 = nan(length(masterTime),11);
+masterAvail68 = nan(length(masterTime),11);
+
+c=0;
+for i = 1:length(masterTime)
+    if masterTime(i,3) == 1
+        c = c+1;
+        masterVh68(i,1:10) = Vh68(c,:);
+        masterAzim68(i,1:10) = Azim68(c,:);
+        masterAlpha68(i,1:9) = alpha68(c,:);
+        masterTKE68(i,1:10) = TKE2_68(c,:);
+        masterI68(i,1:10) = I2_68(c,:);
+        masterAvail68(i,1:10) = Avail68(c,:);
+    end
+end
+
+
+% create time and height matricies
+x = (0:avgprd/60:24)';
+y = alt61-10; y(11) = 230;
+avg_x = (0:avgprd/60:24)';
+avg_y61 = (avgalt61-10)'; avg_y61(10) = 220;
+avg_y68 = (avgalt68-10)'; avg_y68(10) = 220;
+
+
+for month = 6:8
+    switch month
+        case 6
+            ds = 23; % Start day
+            de = 30; % End day
+        case 7
+            ds = 1;
+            de = 31;
+        case 8
+            ds = 1;
+            de = 26;
+    end
+    for day = ds:de
+        start  = strcat('2014/',int2str(month),'/',int2str(day),' 00:00'); % Start time of case study
+        finish = strcat('2014/',int2str(month),'/',int2str(day),' 23:59'); % End time of case study
+        
+        if month < 10
+            stMN = strcat('0',start(6));
+        else
+            stMN = strcat(start(6));
+        end
+        
+        if day < 10
+            stDY = strcat('0',start(8:9));
+        else
+            stDY = strcat(start(8:9));
+        end
+        st = strcat(start(1:4),'-',stMN,'-',stDY);
+        
+        dn_s = datenum(start);
+        dn_e = dn_s+1.0000001;
+        
+        % Label for location
+        if  dn_s < datenum('2014/06/27')
+            loc61_st = [' 40.040900 N';'104.998617 W';'  1604 m MSL';...
+                '            ';'            ';'            ']; % Water tower
+            loc68_st = [' 40.040900 N';'104.998617 W';'  1604 m MSL';...
+                '            ';'            ';'            ']; % Water tower
+        elseif dn_s == datenum('2014/06/27')
+            loc61_st = [' 40.040900 N';'104.998617 W';'  1604 m MSL';...
+                ' 40.048783 N';'105.003133 W';'  1584 m MSL']; % Move to S guys
+            loc68_st = [' 40.040900 N';'104.998617 W';'  1604 m MSL';...
+                '            ';'            ';'            ']; % Water tower
+        elseif dn_s > datenum('2014/06/27') && dn_s < datenum('2014/07/01')
+            loc61_st = [' 40.048783 N';'105.003133 W';'  1584 m MSL';...
+                '            ';'            ';'            ']; % S guys
+            loc68_st = [' 40.040900 N';'104.998617 W';'  1604 m MSL';...
+                '            ';'            ';'            ']; % Water tower
+        elseif dn_s == datenum('2014/07/01')
+            loc61_st = [' 40.048783 N';'105.003133 W';'  1584 m MSL';...
+                ' 40.051181 N';'105.005439 W';'  1577 m MSL']; % Move to NW field
+            loc68_st = [' 40.040900 N';'104.998617 W';'  1604 m MSL';...
+                ' 40.046981 N';'105.003150 W';'  1586 m MSL']; % Move to S field
+        elseif dn_s > datenum('2014/07/01') && dn_s < datenum('2014/07/15')
+            loc61_st = [' 40.051181 N';'105.005439 W';'  1577 m MSL';...
+                '            ';'            ';'            ']; % NW field
+            loc68_st = [' 40.046981 N';'105.003150 W';'  1586 m MSL';...
+                '            ';'            ';'            ']; % S field
+        elseif dn_s == datenum('2014/07/15')
+            loc61_st = [' 40.051181 N';'105.005439 W';'  1577 m MSL';...
+                ' 40.071692 N';'105.026644 W';'  1540 m MSL']; % Move to airport
+            loc68_st = [' 40.046981 N';'105.003150 W';'  1586 m MSL';...
+                '            ';'            ';'            ']; %  S field
+        elseif dn_s > datenum('2014/07/15')
+            loc61_st = [' 40.071692 N';'105.026644 W';'  1540 m MSL';...
+                '            ';'            ';'            ']; % Airport
+            loc68_st = [' 40.046981 N';'105.003150 W';'  1586 m MSL';...
+                '            ';'            ';'            ']; %  S field
+        end
+        
+        
+        % Index the windcube datasets based on the time period of interest
+        index = find(masterTime(:,1)>=dn_s & masterTime(:,1)<=dn_e);
+        
+        if nansum(masterTime(index,2))>1 || nansum(masterTime(index,3))>1
+            %% Load plotting variables
+            fss='FontSize';
+            load('twocolor.mat')
+            twocolor = twocolor./255;
+            
+            %             %% WS
+            %             figure;
+            %             maximize(gcf);
+            %             [p]=pcolor(x,y,masterVh68(index,:)');
+            %             set(gca,fss,fontsize)
+            %             set(p,'EdgeColor','none')
+            %             h=colorbar('location','eastoutside');
+            %             set(h,fss,fontsize);
+            %             caxis([0 15])
+            %             colormap(jet(15))
+            %             title('WC68 Wind Speed')
+            %             ylabel('AGL (m)')
+            %             ylabel(h, 'm/s');
+            %             xlabel (strcat({'UTC on '},st)), set(gca,'XMinorTick','on','TickDir','Out',fss,fontsize)
+            %             xlim([0 24])
+            %             set(gca,'XTick',0:2:24)
+            %             text(0.5,50,loc68_st(1:3,:),fss,fontsize)
+            %             text(18.5,50,loc68_st(4:6,:),fss,fontsize)
+            %             saveas(gcf,strcat(outpath,'WS\WC68_',st,'_WS'),'png')
+            %
+            %             figure;
+            %             maximize(gcf);
+            %             [p]=pcolor(x,y,masterVh61(index,:)');
+            %             set(gca,fss,fontsize)
+            %             set(p,'EdgeColor','none')
+            %             h=colorbar('location','eastoutside');
+            %             set(h,fss,fontsize);
+            %             caxis([0 15])
+            %             colormap(jet(15))
+            %             title('WC61 Wind Speed')
+            %             ylabel('AGL (m)')
+            %             ylabel(h, 'm/s');
+            %             xlabel (strcat({'UTC on '},st)), set(gca,'XMinorTick','on','TickDir','Out',fss,fontsize)
+            %             xlim([0 24])
+            %             set(gca,'XTick',0:2:24)
+            %             text(0.5,50,loc61_st(1:3,:),fss,fontsize)
+            %             text(18.5,50,loc61_st(4:6,:),fss,fontsize)
+            %             saveas(gcf,strcat(outpath,'WS\WC61_',st,'_WS'),'png')
+            %
+            %
+            %             %% WD
+            %             figure;
+            %             maximize(gcf);
+            %             [p]=pcolor(x,y,masterAzim68(index,:)');
+            %             set(gca,fss,fontsize)
+            %             set(p,'EdgeColor','none')
+            %             h=colorbar('location','eastoutside');
+            %             set(h,fss,fontsize);
+            %             caxis([0 360])
+            %             colormap(jet(8))
+            %             set(h,'YTick',[0:45:360])
+            %             title('WC68 Wind Direction')
+            %             ylabel('AGL (m)')
+            %             ylabel(h, '({\circ})');
+            %             xlabel (strcat({'UTC on '},st)), set(gca,'XMinorTick','on','TickDir','Out',fss,fontsize)
+            %             xlim([0 24])
+            %             set(gca,'XTick',0:2:24)
+            %                         text(0.5,50,loc68_st(1:3,:),fss,fontsize)
+            %             text(18.5,50,loc68_st(4:6,:),fss,fontsize)
+            %             saveas(gcf,strcat(outpath,'WD\WC68_',st,'_WD'),'png')
+            %
+            %             figure;
+            %             maximize(gcf);
+            %             [p]=pcolor(x,y,masterAzim61(index,:)');
+            %             set(gca,fss,fontsize)
+            %             set(p,'EdgeColor','none')
+            %             h=colorbar('location','eastoutside');
+            %             set(h,fss,fontsize);
+            %             caxis([0 360])
+            %             colormap(jet(8))
+            %             set(h,'YTick',[0:45:360])
+            %             title('WC61 Wind Direction')
+            %             ylabel('AGL (m)')
+            %             ylabel(h, '({\circ})');
+            %             xlabel (strcat({'UTC on '},st)), set(gca,'XMinorTick','on','TickDir','Out',fss,fontsize)
+            %             xlim([0 24])
+            %             set(gca,'XTick',0:2:24)
+            %             text(0.5,50,loc61_st(1:3,:),fss,fontsize)
+            %             text(18.5,50,loc61_st(4:6,:),fss,fontsize)
+            %             saveas(gcf,strcat(outpath,'WD\WC61_',st,'_WD'),'png')
+            %
+            %
+            %             %% I
+            %             figure;
+            %             maximize(gcf);
+            %             [p]=pcolor(x,y,masterI68(index,:)');
+            %             set(gca,fss,fontsize)
+            %             set(p,'EdgeColor','none')
+            %             h=colorbar('location','eastoutside');
+            %             set(h,fss,fontsize);
+            %             caxis([0 .6])
+            %             title('WC68 Turbulence Intensity')
+            %             ylabel('AGL (m)')
+            %             ylabel(h, '(ND)');
+            %             xlabel (strcat({'UTC on '},st)), set(gca,'XMinorTick','on','TickDir','Out',fss,fontsize)
+            %             xlim([0 24])
+            %             set(gca,'XTick',0:2:24)
+            %             text(0.5,50,loc68_st(1:3,:),fss,fontsize)
+            %             text(18.5,50,loc68_st(4:6,:),fss,fontsize)
+            %             saveas(gcf,strcat(outpath,'I\WC68_',st,'_I'),'png')
+            %
+            %             figure;
+            %             maximize(gcf);
+            %             [p]=pcolor(x,y,masterI61(index,:)');
+            %             set(gca,fss,fontsize)
+            %             set(p,'EdgeColor','none')
+            %             h=colorbar('location','eastoutside');
+            %             set(h,fss,fontsize);
+            %             caxis([0 .6])
+            %             title('WC61 Turbulence Intensity')
+            %             ylabel('AGL (m)')
+            %             ylabel(h, '(ND)');
+            %             xlabel (strcat({'UTC on '},st)), set(gca,'XMinorTick','on','TickDir','Out',fss,fontsize)
+            %             xlim([0 24])
+            %             set(gca,'XTick',0:2:24)
+            %             text(0.5,50,loc61_st(1:3,:),fss,fontsize)
+            %             text(18.5,50,loc61_st(4:6,:),fss,fontsize)
+            %             saveas(gcf,strcat(outpath,'I\WC61_',st,'_I'),'png')
+            %
+            %
+            %             %% Data Availability
+            %             figure;
+            %             maximize(gcf);
+            %             [p]=pcolor(x,y,masterAvail68(index,:)');
+            %             set(gca,fss,fontsize)
+            %             set(p,'EdgeColor','none')
+            %             h=colorbar('location','eastoutside');
+            %             set(h,fss,fontsize);
+            %             caxis([0 100])
+            %             colormap(jet(10))
+            %             title('WC68 2 min. Data Availability')
+            %             ylabel('AGL (m)')
+            %             ylabel(h, '%');
+            %             xlabel (strcat({'UTC on '},st)), set(gca,'XMinorTick','on','TickDir','Out',fss,fontsize)
+            %             xlim([0 24])
+            %             set(gca,'XTick',0:2:24)
+            %             text(0.5,50,loc68_st(1:3,:),fss,fontsize)
+            %             text(18.5,50,loc68_st(4:6,:),fss,fontsize)
+            %             saveas(gcf,strcat(outpath,'Avail\WC68_',st,'_Avail'),'png')
+            %
+            %             figure;
+            %             maximize(gcf);
+            %             [p]=pcolor(x,y,masterAvail61(index,:)');
+            %             set(gca,fss,fontsize)
+            %             set(p,'EdgeColor','none')
+            %             h=colorbar('location','eastoutside');
+            %             set(h,fss,fontsize);
+            %             caxis([0 100])
+            %             colormap(jet(10))
+            %             title('WC61 2 min. Data Availability')
+            %             ylabel('AGL (m)')
+            %             ylabel(h, '%');
+            %             xlabel (strcat({'UTC on '},st)), set(gca,'XMinorTick','on','TickDir','Out',fss,fontsize)
+            %             xlim([0 24])
+            %             set(gca,'XTick',0:2:24)
+            %             text(0.5,50,loc61_st(1:3,:),fss,fontsize)
+            %             text(18.5,50,loc61_st(4:6,:),fss,fontsize)
+            %             saveas(gcf,strcat(outpath,'Avail\WC61_',st,'_Avail'),'png')
+            
+            
+            %% WS & WD 4 panel plot for Data Viewer
+%             load('WDcolorbar.mat')
+%             
+%             figure;
+%             maximize(gcf);
+%             subplot(2,2,1) % WC68 WS
+%             [p]=pcolor(x,y,masterVh68(index,:)');
+%             set(gca,fss,fontsize)
+%             set(p,'EdgeColor','none')
+%             h=colorbar('location','eastoutside');
+%             set(h,fss,fontsize);
+%             caxis([0 15])
+%             colormap(jet(15))
+%             title('WC68 Wind Speed (m/s)')
+%             ylabel('AGL (m)')
+%             xlim([0 24])
+%             set(gca,'XTick',0:4:24,'XMinorTick','on','TickDir','Out',fss,fontsize)
+%             set(gca,'YTick',40:20:220,'YTickLabel',{'40','','80','','120','','160','','200',''},'YMinorTick','off')
+%             text(0.5,200,loc68_st(1:3,:),fss,fontsize)
+%             text(18.5,200,loc68_st(4:6,:),fss,fontsize)
+%             cbfreeze(h)
+%             freezeColors
+%             %             cblabel('m/s',fss,fontsize);
+%             
+%             subplot(2,2,2); % WC61 WS
+%             [p]=pcolor(x,y,masterVh61(index,:)');
+%             set(gca,fss,fontsize)
+%             set(p,'EdgeColor','none')
+%             h=colorbar('location','eastoutside');
+%             set(h,fss,fontsize);
+%             caxis([0 15])
+%             colormap(jet(15))
+%             title('WC61 Wind Speed (m/s)')
+%             xlim([0 24])
+%             set(gca,'XTick',0:4:24,'XMinorTick','on','TickDir','Out',fss,fontsize)
+%             set(gca,'YTick',40:20:220,'YTickLabel',{'40','','80','','120','','160','','200',''},'YMinorTick','off')
+%             text(0.5,200,loc61_st(1:3,:),fss,fontsize)
+%             text(18.5,200,loc61_st(4:6,:),fss,fontsize)
+%             cbfreeze(h)
+%             freezeColors
+%             %             cblabel('m/s',fss,fontsize);
+%             
+%             subplot(2,2,3); % WC68 WD
+%             [p]=pcolor(x,y,masterAzim68(index,:)');
+%             set(gca,fss,fontsize)
+%             set(p,'EdgeColor','none')
+%             h=colorbar('location','eastoutside');
+%             set(h,fss,fontsize);
+%             caxis([0 360])
+%             colormap(WDcolorbar)
+%             set(h,'YTick',[0:45:360])
+%             title('WC68 Wind Direction ({\circ})')
+%             ylabel('AGL (m)')
+%             xlabel (strcat({'UTC on '},st)), set(gca,'XMinorTick','on','TickDir','Out',fss,fontsize)
+%             xlim([0 24])
+%             set(gca,'XTick',0:4:24)
+%             set(gca,'YTick',40:20:220,'YTickLabel',{'40','','80','','120','','160','','200',''},'YMinorTick','off')
+%             cbfreeze(h)
+%             %             cblabel('({\circ})',fss,fontsize);
+%             
+%             subplot(2,2,4); % WC61 WD
+%             [p]=pcolor(x,y,masterAzim61(index,:)');
+%             set(gca,fss,fontsize)
+%             set(p,'EdgeColor','none')
+%             h=colorbar('location','eastoutside');
+%             set(h,fss,fontsize);
+%             colormap(WDcolorbar)
+%             caxis([0 360])
+%             set(h,'YTick',[0:45:360])
+%             title('WC61 Wind Direction ({\circ})')
+%             xlabel (strcat({'UTC on '},st)), set(gca,'XMinorTick','on','TickDir','Out',fss,fontsize)
+%             xlim([0 24])
+%             set(gca,'XTick',0:4:24)
+%             set(gca,'YTick',40:20:220,'YTickLabel',{'40','','80','','120','','160','','200',''},'YMinorTick','off')
+%             %             freezeColors
+%             cbfreeze(h)
+%             %             cblabel('({\circ})',fss,fontsize);
+%             saveas(gcf,strcat(outpath,st,'_WSWD'),'png')
+            
+            
+            
+            %% I & Data avail. 4 panel plot for Data Viewer
+            figure;
+            maximize(gcf);
+            subplot(2,2,1); % WC68 I
+            [p]=pcolor(x,y,masterI68(index,:)');
+            set(gca,fss,fontsize)
+            set(p,'EdgeColor','none')
+            h=colorbar('location','eastoutside');
+            set(h,fss,fontsize);
+            caxis([0 .6])
+            title('WC68 Turbulence Intensity')
+            ylabel('AGL (m)')
+            xlim([0 24])
+            set(gca,'XTick',0:4:24,'XMinorTick','on','TickDir','Out',fss,fontsize)
+            set(gca,'YTick',40:20:220,'YTickLabel',{'40','','80','','120','','160','','200',''},'YMinorTick','off')
+            text(0.5,200,loc68_st(1:3,:),fss,fontsize)
+            text(18.5,200,loc68_st(4:6,:),fss,fontsize)
+            cbfreeze(h)
+            freezeColors
+            
+            subplot(2,2,2); % WC61 I
+            [p]=pcolor(x,y,masterI61(index,:)');
+            set(gca,fss,fontsize)
+            set(p,'EdgeColor','none')
+            h=colorbar('location','eastoutside');
+            set(h,fss,fontsize);
+            caxis([0 .6])
+            title('WC61 Turbulence Intensity')
+            ylabel('AGL (m)')
+            xlim([0 24])
+            set(gca,'XTick',0:4:24,'XMinorTick','on','TickDir','Out',fss,fontsize)
+            set(gca,'YTick',40:20:220,'YTickLabel',{'40','','80','','120','','160','','200',''},'YMinorTick','off')
+            text(0.5,200,loc61_st(1:3,:),fss,fontsize)
+            text(18.5,200,loc61_st(4:6,:),fss,fontsize)
+            cbfreeze(h)
+            freezeColors
+            
+            
+            subplot(2,2,3); % WC68 Data availability
+            [p]=pcolor(x,y,masterAvail68(index,:)');
+            set(gca,fss,fontsize)
+            set(p,'EdgeColor','none')
+            h=colorbar('location','eastoutside');
+            set(h,fss,fontsize);
+            caxis([0 100])
+            colormap(jet(10))
+            title('WC68 2-min. Data Availability (%)')
+            ylabel('AGL (m)')
+            xlabel (strcat({'UTC on '},st)), set(gca,'XMinorTick','on','TickDir','Out',fss,fontsize)
+            xlim([0 24])
+            set(gca,'XTick',0:4:24)
+            set(gca,'YTick',40:20:220,'YTickLabel',{'40','','80','','120','','160','','200',''},'YMinorTick','off')
+            text(0.5,200,loc68_st(1:3,:),fss,fontsize)
+            text(18.5,200,loc68_st(4:6,:),fss,fontsize)
+            cbfreeze(h)
+            freezeColors
+            
+            subplot(2,2,4); % WC61 Data availability
+            [p]=pcolor(x,y,masterAvail61(index,:)');
+            set(gca,fss,fontsize)
+            set(p,'EdgeColor','none')
+            h=colorbar('location','eastoutside');
+            set(h,fss,fontsize);
+            caxis([0 100])
+            colormap(jet(10))
+            title('WC61 2-min. Data Availability (%)')
+            ylabel('AGL (m)')
+            xlabel (strcat({'UTC on '},st)), set(gca,'XMinorTick','on','TickDir','Out',fss,fontsize)
+            xlim([0 24])
+            set(gca,'XTick',0:4:24)
+            set(gca,'YTick',40:20:220,'YTickLabel',{'40','','80','','120','','160','','200',''},'YMinorTick','off')
+            text(0.5,200,loc61_st(1:3,:),fss,fontsize)
+            text(18.5,200,loc61_st(4:6,:),fss,fontsize)
+            cbfreeze(h)
+
+            saveas(gcf,strcat(outpath,st,'_I-Avail'),'png')
+        end
+        close all
+    end
+end
+end
