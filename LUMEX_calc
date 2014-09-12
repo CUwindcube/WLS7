@@ -1,0 +1,120 @@
+function LUMEX_calc(avgprd)
+% LUMEX_calc(2)
+
+% function CWEX13_calc(pth,f1,f2, avgprd)
+% =========================================================================
+% CWEX13_calc loads the raw Windcube data and applies filters on the data
+% based on the specific field conditions (location, precip., etc.).
+% Variables for each windcube are then calculated.  Next the variables are
+% renamed based on upwind or downwind of a turbine.  Finally the data is
+% saved in a .mat file based on teh averaging period and wake broadening 
+% definition (i.e. CWEX11_20avg_5wake.mat).
+% =========================================================================
+% INPUT      DESCRIPTION                  TYPE      UNITS
+% -------------------------------------------------------------------------
+% avgprd        averaging period in minutes
+% wakebroad     either 5 or 10 degree wake broadening
+% =========================================================================
+
+%% Load data
+load('LUMEX_2avg.mat')
+dn61 = datenum(Date61);
+dn68 = datenum(Date68);
+
+%% Find average altitudes for shear definitions
+for i=1:9
+    avgalt61(i) = mean(alt61(i:i+1));
+    avgalt68(i) = mean(alt68(i:i+1));
+end
+alt=alt61;
+%% Calculate variables for each data set
+for wcn = 1:2
+    switch wcn
+        case 1
+            WCnum =61;
+        case 2
+            WCnum =68;
+    end
+    
+    s1 = strcat('Azim',num2str(WCnum)); %Wind direction
+    s2 = strcat('Vh',num2str(WCnum));%Mean horizontal wind speed
+    eval([s1 '(find(isnan(' s2 ')==1 )) =NaN;']) % Set all direction non-readings to NaN instead of zero
+    s1 = strcat('U',num2str(WCnum)); %Mean horizontal calculated from components
+    s2 = strcat('u',num2str(WCnum));
+    s3 = strcat('v',num2str(WCnum));
+    eval([s1 '= sqrt(' s2 '.^2 +' s3 '.^2);']) % Calculate mean wind speed
+    
+    % Speed & Direction Shear definitions
+    for i = 1:length(alt)-1
+        s4 = strcat('spdShr1_',num2str(WCnum));
+        eval([s4 '(:,i) = (' s1 '(:,i+1)-' s1 '(:,i))/(alt(i+1)-alt(i));']) % [(m/s)/m]
+        s2 = strcat('u',num2str(WCnum));
+        s3 = strcat('v',num2str(WCnum));
+        s4 = strcat('spdShr2_',num2str(WCnum));
+        eval([s4 '(:,i) = (((' s2 '(:,i+1)-' s2 '(:,i))/(alt(i+1)-alt(i))).^2 + ((' s3 '(:,i+1)-' s3 '(:,i))/(alt(i+1)-alt(i))).^2).^0.5;']) % [(m/s)/m]
+        
+        s4 = strcat('alpha',num2str(WCnum));
+        for ti = 1:eval(['length(' s1 ')'])
+            eval([s4 '(ti,i) =log(' s1 '(ti,i+1)/' s1 '(ti,i))/log(alt' num2str(WCnum) '(i+1)-alt' num2str(WCnum) '(i));']) % [ND] From the power law
+        end
+        
+        % Directional Shear
+        s1 = strcat('Azim',num2str(WCnum));
+        s2 = strcat('dirdiff',num2str(WCnum));
+        eval([s2 '(:,i) = (' s1 '(:,i+1)-' s1 '(:,i));'])
+        for r = 1:eval(['length(' s1 ')'])
+            if eval(['abs(' s2 '(r,i)) >= 300'])
+                if eval([s1 '(r,i+1) >' s1 '(r,i)'])
+                    eval([s2 '(r,i) =' s1 '(r,i+1)-(' s1 '(r,i)+360);'])
+                else
+                    eval([s2 '(r,i) =' s1 '(r,i+1)-(' s1 '(r,i)-360);'])
+                end
+            end
+        end
+        s3 = strcat('dirShr',num2str(WCnum));
+        eval([s3 '(:,i) =' s2 '(:,i)/(alt(i+1)-alt(i));']) % [deg/m]
+    end
+    
+    % TKE definitions
+    s1 = strcat('TKE1_',num2str(WCnum));
+    s2 = strcat('du',num2str(WCnum)); % Variance in u
+    s3 = strcat('dv',num2str(WCnum)); % Variance in v
+    eval([s1 '=' s2 '.^2 +' s3 '.^2;']) % [(m/s)^2]
+    s1 = strcat('TKE2_',num2str(WCnum));
+    s4 = strcat('dw',num2str(WCnum));
+    eval([s1 '=0.5*(' s2 '.^2 +' s3 '.^2 +' s4 '.^2);']) % [(m/s)^2]
+    
+    % Turbulence Intensity (I) Definitions
+    %1
+    s1 = strcat('I1_',num2str(WCnum));
+    s4 = strcat('U',num2str(WCnum));
+    eval([s1 '=(' s2 '.^0.5+' s3 '.^0.5)./' s4 ';']) %[ND]
+    %2
+    s1 = strcat('I2_',num2str(WCnum));
+    eval([s1 '=(' s2 ' +' s3 ').^0.5./' s4 ';']) %[ND]
+    %3
+    s1 = strcat('I3_',num2str(WCnum));
+    s4 = strcat('U',num2str(WCnum),'(:,3)');
+    for hi = 1:10
+        eval([s1 '(:,hi) =(' s2 '(:,hi)+' s3 '(:,hi)).^0.5./' s4 ';']) %[ND]
+    end
+
+    %%
+    % Vertical
+    s1 = strcat('Iw1_',num2str(WCnum));
+    s2 = strcat('dw',num2str(WCnum));
+    s4 = strcat('U',num2str(WCnum));
+    eval([s1 '=' s2 '.^(1/2)./' s4 ';']) % [ND]
+    s1 = strcat('Iw2_',num2str(WCnum));
+    s3 = strcat('w',num2str(WCnum));
+    eval([s1 '=' s2 '.^(1/2)./' s3 ';']) % [ND]
+end
+
+clearvars -except Avail* Azim* CNR* Date* Vh* Wiper* alt* dCNR* dVh*...
+                  u61 u68 du61 du68 v61 v68 dv61 dv68 w61 w68 dw61 dw68...
+                  avgalt* I* pth TKE* U* alpha* dn* spdS* dir* avgprd Wake* alpha*  
+clear alt VhM* Vhm*
+
+save(strcat('LUMEX_',num2str(avgprd),'avg'))
+end
+
