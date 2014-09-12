@@ -1,0 +1,45 @@
+function [alt,data,textData] = importFile(file,flag)
+%
+% function [alt,data,textData] = importFile(file,flag)
+% =========================================================================
+% importFile imports Windcube data from the specified "sta" or "rtd" file.
+% =========================================================================
+% INPUT       DESCRIPTION                  TYPE                   UNITS
+% -------------------------------------------------------------------------
+% file        file name                    string
+% flag        's' for sta file             string
+%             'r' for rtd file
+% =========================================================================
+% OUTPUT      DESCRIPTION                  TYPE                   UNITS
+% -------------------------------------------------------------------------
+% alt         altitudes                    [1xN]                  m
+% data        lidar data (see Windcube     [Mx19N+1]    for 's'
+%             user manual for more info)   [Mx8N]       for 'r'
+% textData    header and timestamps        [M+57x19N+2] for 's'
+%                                          [M+57x8N+4]  for 'r'
+% =========================================================================
+
+% import and store altitude data
+newData1 = importdata(file);
+alt = newData1.data(1,:);
+alt = alt';
+
+% import the rest of the file
+newData2 = importdata(file,'\t',57);
+
+% store lidar data and get rid of bad entries
+data = newData2.data;
+% data = newData2;
+switch flag
+    case 's'
+        data(data <= -500000 | data >= 50000) = NaN;
+        
+        % store text data (headers and timestamps)
+        textData = newData2.textdata;
+        
+    case 'r'
+        data(data <= -999) = NaN;
+        
+        % store text data (headers and timestamps)
+        textData = newData2.textdata;
+end
